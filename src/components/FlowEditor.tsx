@@ -82,57 +82,62 @@ export default function FlowEditor({
   initialEdges,
   onExportPPT,
   onExportFigma,
+  layoutDirection = "TB",
 }: {
   initialNodes: any[];
   initialEdges: any[];
   onExportPPT: () => void;
   onExportFigma: () => void;
+  layoutDirection?: string;
 }) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { initialLayoutedNodes, initialLayoutedEdges } = React.useMemo(() => {
-    if (!initialNodes || initialNodes.length === 0)
-      return { initialLayoutedNodes: [], initialLayoutedEdges: [] };
-
-    const { nodes, edges } = getLayoutedElements(
-      initialNodes.map((n) => ({ ...n, position: { x: 0, y: 0 } })),
-      initialEdges.map((e) => {
-        const edgeLabel = e.label || "";
-        return {
-          ...e,
-          type: "smoothstep",
-          ...getEdgeStyle(edgeLabel),
-        };
-      }),
-    );
-    return { initialLayoutedNodes: nodes, initialLayoutedEdges: edges };
-  }, [initialNodes, initialEdges]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialLayoutedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayoutedEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [isLayouting, setIsLayouting] = useState(false);
 
   // 분기 Y/N 선택 팝업 상태
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(
     null,
   );
 
-  // Re-sync if initial nodes completely change without unmounting (edge-case fallback)
-  useEffect(() => {
-    setNodes(initialLayoutedNodes);
-    setEdges(initialLayoutedEdges);
-    if (reactFlowInstance) {
-      setTimeout(
-        () => reactFlowInstance.fitView({ duration: 800, padding: 0.2 }),
-        50,
+  // Layout calculation function
+  const onLayout = useCallback(async (currentNodes: any[], currentEdges: any[], direction: string) => {
+    if (!currentNodes || currentNodes.length === 0) return;
+    
+    setIsLayouting(true);
+    try {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = await getLayoutedElements(
+        currentNodes.map((n) => ({ ...n, position: { x: 0, y: 0 } })),
+        currentEdges.map((e) => {
+          const edgeLabel = e.label || "";
+          return {
+            ...e,
+            type: "smoothstep",
+            ...getEdgeStyle(edgeLabel),
+          };
+        }),
+        direction
       );
+      
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+      
+      if (reactFlowInstance) {
+        setTimeout(() => reactFlowInstance.fitView({ duration: 800, padding: 0.2 }), 100);
+      }
+    } catch (error) {
+      console.error("Layout error:", error);
+    } finally {
+      setIsLayouting(false);
     }
-  }, [
-    initialLayoutedNodes,
-    initialLayoutedEdges,
-    reactFlowInstance,
-    setNodes,
-    setEdges,
-  ]);
+  }, [reactFlowInstance, setNodes, setEdges]);
+
+  // Initial layout and direction change
+  useEffect(() => {
+    onLayout(initialNodes, initialEdges, layoutDirection);
+  }, [initialNodes, initialEdges, layoutDirection, onLayout]);
+
 
   // --- A. 엣지 재연결 (드래그 앤 드롭) ---
   const onReconnect = useCallback(
