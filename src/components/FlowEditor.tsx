@@ -29,6 +29,8 @@ import {
   CheckCircle,
   XCircle,
   Link2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 
 let id = 0;
@@ -96,6 +98,58 @@ export default function FlowEditor({
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [isLayouting, setIsLayouting] = useState(false);
 
+  // --- Undo / Redo History State ---
+  const [past, setPast] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const [future, setFuture] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
+
+  const takeSnapshot = useCallback(() => {
+    setPast((p) => [...p.slice(-49), { nodes, edges }]);
+    setFuture([]);
+  }, [nodes, edges]);
+
+  const undo = useCallback(() => {
+    if (past.length === 0) return;
+    const last = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+    
+    setFuture((f) => [{ nodes, edges }, ...f.slice(0, 49)]);
+    setPast(newPast);
+    setNodes(last.nodes);
+    setEdges(last.edges);
+  }, [past, nodes, edges, setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (future.length === 0) return;
+    const next = future[0];
+    const newFuture = future.slice(1);
+    
+    setPast((p) => [...p.slice(-49), { nodes, edges }]);
+    setFuture(newFuture);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+  }, [future, nodes, edges, setNodes, setEdges]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isZ = e.key.toLowerCase() === "z";
+      const isY = e.key.toLowerCase() === "y";
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && isZ) {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (isMod && isY) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
+
+
   // 분기 Y/N 선택 팝업 상태
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(
     null,
@@ -141,9 +195,11 @@ export default function FlowEditor({
 
   // --- A. 엣지 재연결 (드래그 앤 드롭) ---
   const onReconnect = useCallback(
-    (oldEdge: Edge, newConnection: Connection) =>
-      setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds)),
-    [setEdges],
+    (oldEdge: Edge, newConnection: Connection) => {
+      takeSnapshot();
+      setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
+    },
+    [setEdges, takeSnapshot],
   );
 
   // --- B. 연결 생성 (분기 노드면 Y/N 선택 팝업) ---
@@ -156,6 +212,7 @@ export default function FlowEditor({
         setPendingConnection(params);
       } else {
         // 일반 노드 → 즉시 연결
+        takeSnapshot();
         const defaultStyle = getEdgeStyle();
         setEdges((eds) =>
           addEdge(
@@ -169,7 +226,7 @@ export default function FlowEditor({
         );
       }
     },
-    [setEdges, nodes],
+    [setEdges, nodes, takeSnapshot],
   );
 
   // Y/N 선택 후 엣지 생성
@@ -177,6 +234,7 @@ export default function FlowEditor({
     (label: string) => {
       if (!pendingConnection) return;
 
+      takeSnapshot();
       const edgeStyles = getEdgeStyle(label);
       setEdges((eds) =>
         addEdge(
@@ -191,7 +249,7 @@ export default function FlowEditor({
       );
       setPendingConnection(null);
     },
-    [pendingConnection, setEdges],
+    [pendingConnection, setEdges, takeSnapshot],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -211,6 +269,9 @@ export default function FlowEditor({
         x: event.clientX,
         y: event.clientY,
       });
+      
+      takeSnapshot();
+      
       const newNode: Node = {
         id: getId(),
         type,
@@ -220,7 +281,7 @@ export default function FlowEditor({
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [reactFlowInstance, setNodes],
+    [reactFlowInstance, setNodes, takeSnapshot],
   );
 
   return (
@@ -322,6 +383,9 @@ export default function FlowEditor({
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onNodesDelete={takeSnapshot}
+            onEdgesDelete={takeSnapshot}
+            onNodeDragStop={takeSnapshot}
             onConnect={onConnect}
             onReconnect={onReconnect}
             edgesReconnectable={true}
@@ -337,6 +401,25 @@ export default function FlowEditor({
             <Background gap={20} size={1} />
 
             <Panel position="top-right" className="flex flex-col gap-2">
+              <div className="flex bg-white rounded-xl shadow-lg border border-slate-200 p-1 mb-2">
+                <button
+                  onClick={undo}
+                  disabled={past.length === 0}
+                  className={`p-2 rounded-lg transition-all ${past.length === 0 ? "text-slate-200" : "text-slate-600 hover:bg-slate-100"}`}
+                  title="되돌리기 (Ctrl+Z)"
+                >
+                  <Undo2 size={18} />
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={future.length === 0}
+                  className={`p-2 rounded-lg transition-all ${future.length === 0 ? "text-slate-200" : "text-slate-600 hover:bg-slate-100"}`}
+                  title="다시실행 (Ctrl+Y)"
+                >
+                  <Redo2 size={18} />
+                </button>
+              </div>
+              
               <button
                 onClick={() => {
                   (window as any).__flowState = { nodes, edges };

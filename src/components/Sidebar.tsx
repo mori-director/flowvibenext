@@ -88,6 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => {
+                        if (e.nativeEvent.isComposing) return;
                         if (e.key === "Enter") confirmEdit();
                         if (e.key === "Escape") cancelEdit();
                       }}
@@ -151,6 +152,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           onKeyDown={(e) => {
+                            if (e.nativeEvent.isComposing) return;
                             if (e.key === "Enter") confirmEdit();
                             if (e.key === "Escape") cancelEdit();
                           }}
@@ -200,6 +202,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[10px] outline-none focus:border-blue-500 text-white"
                       placeholder="Add sub-menu..."
                       onKeyDown={(e) => {
+                        if (e.nativeEvent.isComposing) return;
                         if (e.key === "Enter" && e.currentTarget.value.trim()) {
                           onAddMenu(e.currentTarget.value.trim(), menu.id);
                           setAddingTo(null);
@@ -225,6 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             value={newMenuName}
             onChange={(e) => setNewMenuName(e.target.value)}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter" && newMenuName.trim()) {
                 onAddMenu(newMenuName.trim());
                 setNewMenuName("");
