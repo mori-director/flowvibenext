@@ -1,319 +1,323 @@
 import { Node, Edge, Position } from "@xyflow/react";
 
-// Layout configuration
-const HORIZONTAL_SPACING = 220; // Space between nodes on main axis (left→right)
-const VERTICAL_SPACING = 140;   // Space between main flow and N-branch
-const NODE_WIDTH = 150;
-const NODE_HEIGHT = 50;
-const DECISION_WIDTH = 160;
+// ===========================
+// Layout Constants
+// ===========================
+const MAIN_GAP = 40;          // Gap along main axis (sequential flow)
+const BRANCH_GAP = 70;        // Gap along branch axis (multi-branch)
+const DECISION_MAIN_GAP = 80; // Gap for Y-branch (decision → next)
+const DECISION_BRANCH_GAP = 140; // Gap for N-branch (decision → side)
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 60;
+const DECISION_WIDTH = 180;
 const DECISION_HEIGHT = 80;
+const COLLISION_MARGIN = 30;  // Minimum space between any two nodes
 
-// Helper: Get node dimensions
 const getNodeSize = (type?: string) => ({
   width: type === "decision" ? DECISION_WIDTH : NODE_WIDTH,
   height: type === "decision" ? DECISION_HEIGHT : NODE_HEIGHT,
 });
 
-// Build adjacency for outgoing edges from each node
-const buildOutgoingMap = (edges: Edge[]) => {
-  const map: Record<string, Edge[]> = {};
-  edges.forEach((e) => {
-    if (!map[e.source]) map[e.source] = [];
-    map[e.source].push(e);
+// ===========================
+// Collision Detection Grid
+// ===========================
+interface OccupiedRect {
+  x: number; y: number; w: number; h: number; nodeId: string;
+}
+
+const checkCollision = (
+  x: number, y: number, w: number, h: number, 
+  occupied: OccupiedRect[], excludeId?: string
+): boolean => {
+  return occupied.some(r => {
+    if (r.nodeId === excludeId) return false;
+    return (
+      x < r.x + r.w + COLLISION_MARGIN &&
+      x + w + COLLISION_MARGIN > r.x &&
+      y < r.y + r.h + COLLISION_MARGIN &&
+      y + h + COLLISION_MARGIN > r.y
+    );
   });
-  return map;
 };
 
-// Find the "main" (non-N) outgoing edge from a node
-const findMainEdge = (nodeId: string, outMap: Record<string, Edge[]>): Edge | null => {
+// ===========================
+// Edge Classification Helpers
+// ===========================
+
+/** Get the "main flow" edge from a node: Y-labeled or unlabeled */
+const getMainEdge = (nodeId: string, outMap: Record<string, Edge[]>): Edge | null => {
   const outEdges = outMap[nodeId] || [];
-  // Prefer Y-labeled edge, then unlabeled, then anything that's not N
   return (
-    outEdges.find((e) => e.label === "Y") ||
-    outEdges.find((e) => !e.label || e.label === "") ||
-    outEdges.find((e) => e.label !== "N") ||
+    outEdges.find(e => e.label === "Y") ||
+    outEdges.find(e => !e.label || e.label === "") ||
     null
   );
 };
 
-// Find the N-branch edge from a node
-const findNEdge = (nodeId: string, outMap: Record<string, Edge[]>): Edge | null => {
+/** Get the N-branch edge from a node */
+const getNEdge = (nodeId: string, outMap: Record<string, Edge[]>): Edge | null => {
   const outEdges = outMap[nodeId] || [];
-  return outEdges.find((e) => e.label === "N") || null;
+  return outEdges.find(e => e.label === "N") || null;
 };
 
-// Trace main path from a start node (following Y/default edges)
-const traceMainPath = (
-  startId: string,
-  outMap: Record<string, Edge[]>,
-  visited: Set<string>,
-): string[] => {
-  const path: string[] = [];
-  let currentId: string | null = startId;
-
-  while (currentId && !visited.has(currentId)) {
-    visited.add(currentId);
-    path.push(currentId);
-    const mainEdge = findMainEdge(currentId, outMap);
-    currentId = mainEdge ? mainEdge.target : null;
-  }
-
-  return path;
+/** Get all non-Y/N "multi-branch" edges (e.g., 자전거/도보/자동차) */
+const getMultiBranchEdges = (nodeId: string, outMap: Record<string, Edge[]>): Edge[] => {
+  const outEdges = outMap[nodeId] || [];
+  const yEdge = outEdges.find(e => e.label === "Y");
+  const nEdge = outEdges.find(e => e.label === "N");
+  const unlabeled = outEdges.filter(e => !e.label || e.label === "");
+  
+  // If there's at least one Y/N label, it's a decision node
+  if (yEdge || nEdge) return [];
+  
+  // If there's only one unlabeled edge, it's a simple sequential flow
+  if (unlabeled.length <= 1) return [];
+  
+  // Multiple unlabeled edges = multi-branch (e.g., transportation modes)
+  return unlabeled;
 };
 
-// Collision map to track occupied regions
-interface OccupiedRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-const hasCollision = (
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  occupied: OccupiedRect[],
-): boolean => {
-  const margin = 20;
-  return occupied.some(
-    (r) =>
-      x < r.x + r.w + margin &&
-      x + w + margin > r.x &&
-      y < r.y + r.h + margin &&
-      y + h + margin > r.y,
-  );
-};
-
-// =====================
-// CUSTOM LAYOUT ENGINE
-// =====================
+// ===========================
+// MAIN LAYOUT ENGINE
+// ===========================
 export const getLayoutedElements = async (
   nodes: Node[],
   edges: Edge[],
   direction = "TB",
 ) => {
   const isHorizontal = direction === "LR";
-  const outMap = buildOutgoingMap(edges);
+  
+  // Build adjacency
+  const outMap: Record<string, Edge[]> = {};
+  edges.forEach(e => {
+    if (!outMap[e.source]) outMap[e.source] = [];
+    outMap[e.source].push(e);
+  });
 
-  // Find start nodes (no incoming edges)
-  const startNodeIds = nodes
-    .filter((n) => !edges.some((e) => e.target === n.id))
-    .map((n) => n.id);
+  // Dimension lookup
+  const dims: Record<string, { width: number; height: number }> = {};
+  nodes.forEach(n => { dims[n.id] = getNodeSize(n.type); });
 
-  // Position storage
+  // Position storage & collision grid
   const positions: Record<string, { x: number; y: number }> = {};
   const occupied: OccupiedRect[] = [];
-  const globalVisited = new Set<string>();
+  const visited = new Set<string>();
 
-  // Recursive layout function
-  const layoutPath = (startId: string, baseX: number, baseY: number) => {
-    const path = traceMainPath(startId, outMap, globalVisited);
+  /**
+   * Place a node at (x, y) and register it in the collision grid.
+   * Returns the resolved position after any collision adjustments.
+   */
+  const placeNode = (nodeId: string, x: number, y: number, pushAxis: "x" | "y" = "x"): { x: number; y: number } => {
+    const { width: w, height: h } = dims[nodeId];
+    
+    // Resolve collisions by pushing along the specified axis
+    let attempts = 0;
+    while (checkCollision(x, y, w, h, occupied) && attempts < 50) {
+      if (pushAxis === "x") x += BRANCH_GAP;
+      else y += MAIN_GAP;
+      attempts++;
+    }
+    
+    positions[nodeId] = { x, y };
+    occupied.push({ x, y, w, h, nodeId });
+    return { x, y };
+  };
 
-    let x = baseX;
-    let y = baseY;
+  /**
+   * Recursively layout a node and its children.
+   * 
+   * Key rules:
+   * 1. Y-branch (main flow): continues along main axis (↓ in TB, → in LR)
+   * 2. N-branch (exception): offset along secondary axis (→ in TB, ↓ in LR)
+   * 3. Multi-branch (자전거/도보/자동차): fan out symmetrically on secondary axis
+   * 4. Collision detection prevents overlap when branches merge
+   */
+  const layoutNode = (nodeId: string, x: number, y: number) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
 
-    for (const nodeId of path) {
-      const nodeData = nodes.find((n) => n.id === nodeId);
-      const { width: nw, height: nh } = getNodeSize(nodeData?.type);
+    const { width: nw, height: nh } = dims[nodeId];
+    const pos = placeNode(nodeId, x, y, isHorizontal ? "y" : "x");
+    
+    const outEdges = outMap[nodeId] || [];
+    const unvisitedEdges = outEdges.filter(e => !visited.has(e.target));
+    if (unvisitedEdges.length === 0) return;
 
+    // Classify edges
+    const mainEdge = getMainEdge(nodeId, outMap);
+    const nEdge = getNEdge(nodeId, outMap);
+    const multiBranch = getMultiBranchEdges(nodeId, outMap);
+
+    if (multiBranch.length > 0) {
+      // ===== MULTI-BRANCH (e.g., 3-way split) =====
+      // Center the branches relative to the parent
+      const validBranches = multiBranch.filter(e => !visited.has(e.target));
+      const count = validBranches.length;
+      
       if (isHorizontal) {
-        // LR mode: Main flow goes LEFT → RIGHT
-        // Resolve collision by pushing Y down
-        while (hasCollision(x, y, nw, nh, occupied)) {
-          y += VERTICAL_SPACING;
-        }
-        positions[nodeId] = { x, y };
-        occupied.push({ x, y, w: nw, h: nh });
-
-        // Check for N branch → goes DOWN
-        const nEdge = findNEdge(nodeId, outMap);
-        if (nEdge && !globalVisited.has(nEdge.target)) {
-          layoutPath(nEdge.target, x, y + VERTICAL_SPACING);
-        }
-
-        x += HORIZONTAL_SPACING;
+        const nextX = pos.x + nw + BRANCH_GAP;
+        const totalHeight = count * nh + (count - 1) * (MAIN_GAP * 0.6);
+        const startY = pos.y + nh / 2 - totalHeight / 2;
+        
+        validBranches.forEach((e, i) => {
+          const childY = startY + i * (nh + MAIN_GAP * 0.6);
+          layoutNode(e.target, nextX, childY);
+        });
       } else {
-        // TB mode: Main flow goes TOP → BOTTOM
-        // Resolve collision by pushing X right
-        while (hasCollision(x, y, nw, nh, occupied)) {
-          x += HORIZONTAL_SPACING;
-        }
-        positions[nodeId] = { x, y };
-        occupied.push({ x, y, w: nw, h: nh });
-
-        // Check for N branch → goes RIGHT
-        const nEdge = findNEdge(nodeId, outMap);
-        if (nEdge && !globalVisited.has(nEdge.target)) {
-          layoutPath(nEdge.target, x + HORIZONTAL_SPACING, y);
-        }
-
-        y += VERTICAL_SPACING;
+        const nextY = pos.y + nh + MAIN_GAP;
+        const totalWidth = count * nw + (count - 1) * (BRANCH_GAP * 0.75);
+        const startX = pos.x + nw / 2 - totalWidth / 2;
+        
+        validBranches.forEach((e, i) => {
+          const childX = startX + i * (nw + BRANCH_GAP * 0.75);
+          layoutNode(e.target, childX, nextY);
+        });
       }
+    } else {
+      // ===== DECISION BRANCH (Y/N) or SEQUENTIAL =====
+      const hasDecision = !!(nEdge || (mainEdge && mainEdge.label === "Y"));
+      const flowGap = hasDecision ? DECISION_MAIN_GAP : MAIN_GAP;
+      const sideGap = hasDecision ? DECISION_BRANCH_GAP : BRANCH_GAP;
+      
+      // 1. Y-branch or single unlabeled: follows main axis
+      const mainTarget = mainEdge && !visited.has(mainEdge.target) ? mainEdge.target : null;
+      if (mainTarget) {
+        if (isHorizontal) {
+          layoutNode(mainTarget, pos.x + nw + flowGap, pos.y);
+        } else {
+          layoutNode(mainTarget, pos.x, pos.y + nh + flowGap);
+        }
+      }
+
+      // 2. N-branch: offset to secondary axis, AWAY from main flow
+      const nTarget = nEdge && !visited.has(nEdge.target) ? nEdge.target : null;
+      if (nTarget) {
+        if (isHorizontal) {
+          // N goes DOWN in LR mode
+          layoutNode(nTarget, pos.x, pos.y + nh + sideGap);
+        } else {
+          // N goes RIGHT in TB mode
+          layoutNode(nTarget, pos.x + nw + sideGap, pos.y);
+        }
+      }
+
+      // 3. Any remaining edges (labeled but not Y/N)
+      const handledIds = new Set([mainEdge?.target, nEdge?.target].filter(Boolean));
+      const remaining = unvisitedEdges.filter(e => !handledIds.has(e.target) && !visited.has(e.target));
+      
+      remaining.forEach((e, i) => {
+        if (isHorizontal) {
+          layoutNode(e.target, pos.x + nw + MAIN_GAP, pos.y + (i + 1) * (nh + MAIN_GAP * 0.8));
+        } else {
+          layoutNode(e.target, pos.x + (i + 1) * (nw + BRANCH_GAP * 0.8), pos.y + nh + MAIN_GAP);
+        }
+      });
     }
   };
 
-  // Layout each start node's tree
-  let startOffset = 0;
+  // ===========================
+  // Execute Layout
+  // ===========================
+  const startNodeIds = nodes
+    .filter(n => !edges.some(e => e.target === n.id))
+    .map(n => n.id);
+
+  let globalOffset = 0;
   for (const startId of startNodeIds) {
-    if (!globalVisited.has(startId)) {
+    if (!visited.has(startId)) {
+      layoutNode(startId, isHorizontal ? 0 : globalOffset, isHorizontal ? globalOffset : 0);
+      
+      // Calculate next tree offset
+      const allX = Object.values(positions).map(p => p.x);
+      const allY = Object.values(positions).map(p => p.y);
       if (isHorizontal) {
-        layoutPath(startId, 0, startOffset);
+        globalOffset = Math.max(...allY) + BRANCH_GAP;
       } else {
-        layoutPath(startId, startOffset, 0);
-      }
-      // Calculate offset for next disconnected component
-      if (isHorizontal) {
-        const maxY = Math.max(...Object.values(positions).map((p) => p.y), 0);
-        startOffset = maxY + VERTICAL_SPACING * 2;
-      } else {
-        const maxX = Math.max(...Object.values(positions).map((p) => p.x), 0);
-        startOffset = maxX + HORIZONTAL_SPACING * 2;
+        globalOffset = Math.max(...allX) + BRANCH_GAP;
       }
     }
   }
 
-  // Handle any unvisited nodes (orphans or cycles)
-  nodes.forEach((node) => {
-    if (!positions[node.id]) {
-      const { width: nw, height: nh } = getNodeSize(node.type);
-      let ox = 0;
-      let oy = startOffset;
-      while (hasCollision(ox, oy, nw, nh, occupied)) {
-        if (isHorizontal) ox += HORIZONTAL_SPACING;
-        else oy += VERTICAL_SPACING;
-      }
-      positions[node.id] = { x: ox, y: oy };
-      occupied.push({ x: ox, y: oy, w: nw, h: nh });
+  // Handle orphans
+  nodes.forEach(n => {
+    if (!visited.has(n.id)) {
+      layoutNode(n.id, isHorizontal ? 0 : globalOffset, isHorizontal ? globalOffset : 0);
+      if (isHorizontal) globalOffset += BRANCH_GAP;
+      else globalOffset += BRANCH_GAP;
     }
   });
 
-  // Build final nodes
-  const layoutedNodes = nodes.map((node) => {
+  // ===========================
+  // Build Final Nodes
+  // ===========================
+  const layoutedNodes = nodes.map(node => {
     const pos = positions[node.id] || { x: 0, y: 0 };
-    const { width, height } = getNodeSize(node.type);
+    const { width, height } = dims[node.id];
     return {
       ...node,
       position: pos,
       width,
       height,
-      targetPosition: Position.Top,
-      sourcePosition: Position.Bottom,
-      style: { ...node.style, opacity: 1 },
+      targetPosition: isHorizontal ? Position.Left : Position.Top,
+      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
     };
   });
 
-  // Build final edges with SMART 1:1 handle distribution
-  // Step 1: Group edges by source and target
-  const outgoingByNode: Record<string, Edge[]> = {};
-  const incomingByNode: Record<string, Edge[]> = {};
-  edges.forEach((e) => {
-    if (!outgoingByNode[e.source]) outgoingByNode[e.source] = [];
-    outgoingByNode[e.source].push(e);
-    if (!incomingByNode[e.target]) incomingByNode[e.target] = [];
-    incomingByNode[e.target].push(e);
-  });
+  // ===========================
+  // Smart Edge Handle Assignment
+  // ===========================
+  const finalEdges = edges.map(edge => {
+    const src = layoutedNodes.find(n => n.id === edge.source);
+    const tgt = layoutedNodes.find(n => n.id === edge.target);
+    if (!src || !tgt) return edge;
 
-  // Step 2: Pre-assign source handles per node (distribute outgoing edges)
-  const edgeSourceHandles: Record<string, string> = {};
-  const edgeTargetHandles: Record<string, string> = {};
+    const sx = src.position.x, sy = src.position.y;
+    const tx = tgt.position.x, ty = tgt.position.y;
+    const sw = dims[edge.source]?.width || NODE_WIDTH;
+    const sh = dims[edge.source]?.height || NODE_HEIGHT;
 
-  Object.keys(outgoingByNode).forEach((srcId) => {
-    const srcEdges = outgoingByNode[srcId];
-    const srcPos = positions[srcId];
-    if (!srcPos) return;
+    let sourceHandle: string;
+    let targetHandle: string;
 
     if (isHorizontal) {
-      // LR mode: Main/Y → right, N → bottom, extras → top
-      const mainEdges = srcEdges.filter((e) => e.label !== "N");
-      const nEdges = srcEdges.filter((e) => e.label === "N");
-
-      // Assign main edges to right handle
-      mainEdges.forEach((e) => {
-        edgeSourceHandles[e.id] = "right-source";
-      });
-
-      // Assign N edges: first N → bottom, second N → top
-      nEdges.forEach((e, i) => {
-        edgeSourceHandles[e.id] = i === 0 ? "bottom-source" : "top-source";
-      });
+      // LR: Main flow → right-source / left-target
+      // N branch → bottom-source / top-target (goes down)
+      if (ty > sy + sh) {
+        // Target is significantly BELOW source → N-branch going down
+        sourceHandle = "bottom-source";
+        targetHandle = "top-target";
+      } else if (ty < sy - 40) {
+        // Target is ABOVE → return branch
+        sourceHandle = "top-source";
+        targetHandle = "bottom-target";
+      } else {
+        // Same level → main flow right
+        sourceHandle = "right-source";
+        targetHandle = "left-target";
+      }
     } else {
-      // TB mode: Main/Y → bottom, N → right, extras → left
-      const mainEdges = srcEdges.filter((e) => e.label !== "N");
-      const nEdges = srcEdges.filter((e) => e.label === "N");
-
-      mainEdges.forEach((e) => {
-        edgeSourceHandles[e.id] = "bottom-source";
-      });
-
-      nEdges.forEach((e, i) => {
-        edgeSourceHandles[e.id] = i === 0 ? "right-source" : "left-source";
-      });
+      // TB: Main flow → bottom-source / top-target
+      // N branch → right-source / left-target (goes right)
+      if (tx > sx + sw) {
+        // Target is significantly to the RIGHT → N-branch
+        sourceHandle = "right-source";
+        targetHandle = "left-target";
+      } else if (tx < sx - 40) {
+        // Target is to the LEFT → return/merge branch
+        sourceHandle = "left-source";
+        targetHandle = "right-target";
+      } else {
+        // Same column → main flow down
+        sourceHandle = "bottom-source";
+        targetHandle = "top-target";
+      }
     }
-  });
 
-  // Step 3: Pre-assign target handles per node (distribute incoming edges)
-  Object.keys(incomingByNode).forEach((tgtId) => {
-    const tgtEdges = incomingByNode[tgtId];
-    const tgtPos = positions[tgtId];
-    if (!tgtPos) return;
-
-    if (isHorizontal) {
-      // LR mode: Determine target handle based on source position
-      tgtEdges.forEach((e) => {
-        const srcPos = positions[e.source];
-        if (!srcPos) { edgeTargetHandles[e.id] = "left-target"; return; }
-
-        if (srcPos.y < tgtPos.y - 20) {
-          // Source is ABOVE → enter from top
-          edgeTargetHandles[e.id] = "top-target";
-        } else if (srcPos.y > tgtPos.y + 20) {
-          // Source is BELOW → enter from bottom
-          edgeTargetHandles[e.id] = "bottom-target";
-        } else {
-          // Source is roughly same Y → enter from left (main flow)
-          edgeTargetHandles[e.id] = "left-target";
-        }
-      });
-    } else {
-      // TB mode: Determine target handle based on source position
-      // KEY FIX: If source is to the RIGHT, use right-target (not left!)
-      //          so the line stays on the right side and doesn't cross the main flow
-      tgtEdges.forEach((e) => {
-        const srcPos = positions[e.source];
-        if (!srcPos) { edgeTargetHandles[e.id] = "top-target"; return; }
-
-        if (srcPos.x > tgtPos.x + 20) {
-          // Source is to the RIGHT → enter from right (N-branch return)
-          edgeTargetHandles[e.id] = "right-target";
-        } else if (srcPos.x < tgtPos.x - 20) {
-          // Source is to the LEFT → enter from left
-          edgeTargetHandles[e.id] = "left-target";
-        } else {
-          // Source is roughly same X → enter from top (main flow)
-          edgeTargetHandles[e.id] = "top-target";
-        }
-      });
-    }
-  });
-
-
-  // Step 4: Build final edges with assigned handles
-  const finalEdges = edges.map((edge) => {
-    const sourceHandle = edgeSourceHandles[edge.id] || (isHorizontal ? "right-source" : "bottom-source");
-    const targetHandle = edgeTargetHandles[edge.id] || (isHorizontal ? "left-target" : "top-target");
-
-    return {
-      ...edge,
-      sourceHandle,
-      targetHandle,
-    };
+    return { ...edge, sourceHandle, targetHandle };
   });
 
   return { nodes: layoutedNodes, edges: finalEdges };
 };
-
 
 
 

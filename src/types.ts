@@ -2,6 +2,7 @@ export interface MenuItem {
   id: string;
   name: string;
   depth: 1 | 2;
+  order: number;
   parentId?: string;
   flowData?: {
     flowName: string;

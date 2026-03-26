@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, ChevronRight, ChevronDown, ListTree, Layout, FileText, Trash2 } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown, FileText, Layout, Trash2, Check, X } from "lucide-react";
 import { MenuItem } from "../types";
 
 interface SidebarProps {
@@ -8,6 +8,8 @@ interface SidebarProps {
   onSelectMenu: (id: string) => void;
   onAddMenu: (name: string, parentId?: string) => void;
   onDeleteMenu: (id: string) => void;
+  onRenameMenu: (id: string, newName: string) => void;
+  onMoveMenu: (id: string, direction: "up" | "down") => void;
   projectName: string;
 }
 
@@ -17,13 +19,40 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectMenu,
   onAddMenu,
   onDeleteMenu,
+  onRenameMenu,
+  onMoveMenu,
   projectName,
 }) => {
   const [newMenuName, setNewMenuName] = useState("");
-  const [addingTo, setAddingTo] = useState<string | null>(null); // Parent ID for 2nd depth
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
-  const firstDepthMenus = menus.filter((m) => m.depth === 1);
-  const getSubMenus = (parentId: string) => menus.filter((m) => m.parentId === parentId);
+  const firstDepthMenus = menus
+    .filter((m) => m.depth === 1)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const getSubMenus = (parentId: string) =>
+    menus
+      .filter((m) => m.parentId === parentId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const startEdit = (id: string, currentName: string) => {
+    setEditingId(id);
+    setEditName(currentName);
+  };
+
+  const confirmEdit = () => {
+    if (editingId && editName.trim()) {
+      onRenameMenu(editingId, editName);
+    }
+    setEditingId(null);
+    setEditName("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName("");
+  };
 
   return (
     <div className="w-64 h-full bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shadow-xl overflow-hidden">
@@ -41,7 +70,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
         {firstDepthMenus.map((menu) => {
           const subMenus = getSubMenus(menu.id);
-          const isActive = activeMenuId === menu.id || subMenus.some(s => s.id === activeMenuId);
           
           return (
             <div key={menu.id} className="space-y-1">
@@ -51,24 +79,57 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }`}
                 onClick={() => onSelectMenu(menu.id)}
               >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <FileText size={16} className={activeMenuId === menu.id ? "text-white" : "text-blue-500"} />
-                  <span className="text-xs font-bold truncate pr-2">{menu.name}</span>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setAddingTo(addingTo === menu.id ? null : menu.id); }}
-                    className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
-                  >
-                    <Plus size={12} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteMenu(menu.id); }}
-                    className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-rose-400"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
+                {editingId === menu.id ? (
+                  <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      autoFocus
+                      type="text"
+                      className="flex-1 bg-slate-950 border border-blue-500 rounded px-1.5 py-0.5 text-[11px] outline-none text-white min-w-0"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") confirmEdit();
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                      onBlur={confirmEdit}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 overflow-hidden" onDoubleClick={(e) => { e.stopPropagation(); startEdit(menu.id, menu.name); }}>
+                      <FileText size={16} className={activeMenuId === menu.id ? "text-white" : "text-blue-500"} />
+                      <span className="text-xs font-bold truncate pr-2">{menu.name}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveMenu(menu.id, "up"); }}
+                        className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                        title="위로 이동"
+                      >
+                        <ChevronUp size={11} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveMenu(menu.id, "down"); }}
+                        className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                        title="아래로 이동"
+                      >
+                        <ChevronDown size={11} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setAddingTo(addingTo === menu.id ? null : menu.id); }}
+                        className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                      >
+                        <Plus size={12} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onDeleteMenu(menu.id); }}
+                        className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-rose-400"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Submenus */}
@@ -81,13 +142,53 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                     onClick={() => onSelectMenu(sub.id)}
                   >
-                    <span className="text-[11px] font-medium truncate pr-2">↳ {sub.name}</span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onDeleteMenu(sub.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded text-slate-500 hover:text-rose-400 transition-all"
-                    >
-                      <Trash2 size={10} />
-                    </button>
+                    {editingId === sub.id ? (
+                      <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          autoFocus
+                          type="text"
+                          className="flex-1 bg-slate-950 border border-blue-500 rounded px-1.5 py-0.5 text-[10px] outline-none text-white min-w-0"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") confirmEdit();
+                            if (e.key === "Escape") cancelEdit();
+                          }}
+                          onBlur={confirmEdit}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <span 
+                          className="text-[11px] font-medium truncate pr-2"
+                          onDoubleClick={(e) => { e.stopPropagation(); startEdit(sub.id, sub.name); }}
+                        >
+                          ↳ {sub.name}
+                        </span>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onMoveMenu(sub.id, "up"); }}
+                            className="p-0.5 hover:bg-slate-700 rounded text-slate-500 hover:text-white"
+                            title="위로 이동"
+                          >
+                            <ChevronUp size={10} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onMoveMenu(sub.id, "down"); }}
+                            className="p-0.5 hover:bg-slate-700 rounded text-slate-500 hover:text-white"
+                            title="아래로 이동"
+                          >
+                            <ChevronDown size={10} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onDeleteMenu(sub.id); }}
+                            className="p-0.5 hover:bg-slate-700 rounded text-slate-500 hover:text-rose-400"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
                 
