@@ -903,9 +903,16 @@ ${refinePrompt}
                 <div className="flex-1 flex flex-col overflow-hidden h-full">
                   {step === 1 && (
                     <div className="h-full max-w-5xl mx-auto flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full overflow-hidden">
-                      <header className="text-center space-y-1 flex-none">
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedProject?.name} 서비스 프로세스 설계</h2>
-                        <p className="text-slate-500 text-sm">메뉴 생성 후 개별 프로세스 정보를 등록하세요.</p>
+                      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-2xl shadow-sm border border-slate-200 flex-none">
+                        <div>
+                          <h2 className="text-xl font-black text-slate-900 tracking-tight">{selectedProject?.name} 서비스 프로세스 설계</h2>
+                          <p className="text-slate-500 text-sm mt-1">메뉴 생성 후 개별 프로세스 정보를 등록하세요.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {structuredPlan && structuredPlan.length > 0 && activeMenu?.depth === 2 && (
+                            <button onClick={() => setStep(2)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-200 text-xs">다음 <ArrowRight size={16} /></button>
+                          )}
+                        </div>
                       </header>
                       <div className="flex-1 bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-200 p-6 md:p-8 flex flex-col gap-6 overflow-hidden">
                         <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-6 custom-scrollbar">
@@ -1051,7 +1058,8 @@ ${refinePrompt}
                         ) : (
                           <button onClick={generateInitialFlow} disabled={loading || !info.serviceName.trim() || !info.flowName.trim() || !info.flowDesc.trim()} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-black text-lg shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2 flex-none">
                             {loading ? <RefreshCw className="animate-spin" /> : <Eye />}
-                            {loading ? "AI 분석 및 설계 중..." : "✨ 프로세스 분석 시작"}
+                            {loading ? "AI 분석 및 설계 중..." : 
+                             (structuredPlan && structuredPlan.length > 0 ? "✨ 프로세스 재분석" : "✨ 프로세스 분석 시작")}
                           </button>
                         )}
                       </div>
@@ -1067,6 +1075,7 @@ ${refinePrompt}
                         </div>
                         <div className="flex items-center gap-3">
                           <button onClick={() => setStep(1)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all flex items-center gap-1.5 text-xs shadow-sm"><ArrowLeft size={16} /> 이전</button>
+                          <button onClick={() => setStep(3)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-200 text-xs">다음 <ArrowRight size={16} /></button>
                         </div>
                       </header>
                       <div className="flex gap-4 flex-1 min-h-0 h-full overflow-hidden">
@@ -1081,7 +1090,6 @@ ${refinePrompt}
                                 <button onClick={() => setLayoutDirection("TB")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
                                 <button onClick={() => setLayoutDirection("LR")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
                               </div>
-                              <button onClick={() => setStep(3)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-200 text-xs">최종 시각화 <ChevronRight size={16} /></button>
                             </div>
                           </div>
                           <div className="flex-1 h-full w-full p-6 text-sm text-slate-600 leading-relaxed font-medium bg-transparent overflow-y-auto custom-scrollbar">
