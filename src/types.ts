@@ -8,6 +8,7 @@ export interface MenuItem {
     domain?: string;
     customDomain?: string;
     channel?: string;
+    referenceFlowId?: string;
     flowName: string;
     flowDesc: string;
     policy: string;
