@@ -915,7 +915,7 @@ ${refinePrompt}
   return (
     <div className="h-screen w-screen bg-slate-50 flex flex-col font-sans overflow-hidden text-slate-900 relative">
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 flex-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setStep(0); setSelectedProjectId(null); setActiveMenuId(null); }}>
             <div className="bg-blue-600 text-white p-2 rounded-xl shadow-lg shadow-blue-200"><Layers size={20} /></div>
             <div>
