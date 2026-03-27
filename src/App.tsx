@@ -23,7 +23,8 @@ import {
   PlusSquare,
   ListTree,
   ArrowRight,
-  Link
+  Link,
+  X
 } from "lucide-react";
 import { GoogleGenAI, Type } from "@google/genai";
 import FlowEditor from "./components/FlowEditor";
@@ -129,7 +130,7 @@ export default function App() {
     flowDesc: "",
     serviceType: "",
     policy: "",
-    referenceFlowId: "",
+    referenceFlowIds: [] as string[],
     includeExceptions: true,
   });
 
@@ -172,7 +173,7 @@ export default function App() {
         flowDesc: fd.flowDesc,
         serviceType: fd.channel || defaultChannel,
         policy: fd.policy,
-        referenceFlowId: fd.referenceFlowId || "",
+        referenceFlowIds: fd.referenceFlowIds || (fd.referenceFlowId ? [fd.referenceFlowId] : []),
         includeExceptions: true,
       });
       setFlowNodes(fd.nodes);
@@ -191,7 +192,7 @@ export default function App() {
         flowDesc: "",
         serviceType: defaultChannel,
         policy: "",
-        referenceFlowId: "",
+        referenceFlowIds: [],
         includeExceptions: true,
       });
       setFlowNodes([]);
@@ -218,7 +219,7 @@ export default function App() {
               domain: info.domain,
               customDomain: info.customDomain,
               channel: info.serviceType,
-              referenceFlowId: info.referenceFlowId,
+              referenceFlowIds: info.referenceFlowIds,
               flowName: info.flowName,
               flowDesc: info.flowDesc,
               policy: info.policy,
@@ -962,17 +963,41 @@ ${refinePrompt}
                             <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                               <label className="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Link size={12} className="text-blue-500" /> 타 프로세스 참조 (Reference Flow)</label>
                               <select 
-                                name="referenceFlowId" 
-                                value={info.referenceFlowId} 
-                                onChange={handleInfoChange} 
+                                value=""
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val && !info.referenceFlowIds.includes(val)) {
+                                    setInfo(prev => ({ ...prev, referenceFlowIds: [...prev.referenceFlowIds, val] }));
+                                  }
+                                }} 
                                 className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm text-slate-700 cursor-pointer shadow-sm"
                               >
-                                <option value="">선택 안 함 (독립 프로세스)</option>
-                                {projects.find(p => p.id === selectedProjectId)?.menus.filter(m => m.depth === 2 && m.id !== activeMenuId && m.flowData?.structuredPlan && m.flowData.structuredPlan.length > 0).map(m => (
+                                <option value="">참조할 프로세스 추가하기...</option>
+                                {projects.find(p => p.id === selectedProjectId)?.menus.filter(m => m.depth === 2 && m.id !== activeMenuId && m.flowData?.structuredPlan && m.flowData.structuredPlan.length > 0 && !info.referenceFlowIds.includes(m.id)).map(m => (
                                   <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                               </select>
-                              <p className="text-[10px] text-slate-500 mt-1.5 pl-1 font-medium">선택 시, 해당 프로세스의 핵심 설계 정보를 상속받아 유기적인 흐름을 구성합니다.</p>
+
+                              {info.referenceFlowIds.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {info.referenceFlowIds.map(id => {
+                                    const refMenu = projects.find(p => p.id === selectedProjectId)?.menus.find(m => m.id === id);
+                                    if (!refMenu) return null;
+                                    return (
+                                      <div key={id} className="flex items-center gap-1.5 bg-blue-100/80 text-blue-800 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm border border-blue-200">
+                                        <span>{refMenu.name}</span>
+                                        <button 
+                                          onClick={() => setInfo(prev => ({ ...prev, referenceFlowIds: prev.referenceFlowIds.filter(rid => rid !== id) }))} 
+                                          className="text-blue-400 hover:text-blue-700 transition-colors p-0.5 rounded-full hover:bg-blue-200"
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <p className="text-[10px] text-slate-500 mt-2 pl-1 font-medium leading-relaxed">추가된 프로세스들의 핵심 설계 정보를 모두 유기적으로 통합하여 시니어 수준의 설계 흐름을 도출합니다.</p>
                             </div>
                           )}
 
