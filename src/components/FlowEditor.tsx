@@ -103,7 +103,14 @@ export default function FlowEditor({
   const [future, setFuture] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
 
   const takeSnapshot = useCallback(() => {
-    setPast((p) => [...p.slice(-49), { nodes, edges }]);
+    setPast((p) => {
+      const last = p[p.length - 1];
+      // 방금 전 상태와 완전히 동일하다면 중복 저장 방지
+      if (last && JSON.stringify(last.nodes) === JSON.stringify(nodes) && JSON.stringify(last.edges) === JSON.stringify(edges)) {
+        return p;
+      }
+      return [...p.slice(-49), { nodes, edges }];
+    });
     setFuture([]);
   }, [nodes, edges]);
 
@@ -385,7 +392,7 @@ export default function FlowEditor({
             onEdgesChange={onEdgesChange}
             onNodesDelete={takeSnapshot}
             onEdgesDelete={takeSnapshot}
-            onNodeDragStop={takeSnapshot}
+            onNodeDragStart={takeSnapshot}
             onConnect={onConnect}
             onReconnect={onReconnect}
             edgesReconnectable={true}
