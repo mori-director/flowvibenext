@@ -5,6 +5,9 @@ export interface MenuItem {
   order: number;
   parentId?: string;
   flowData?: {
+    domain?: string;
+    customDomain?: string;
+    channel?: string;
     flowName: string;
     flowDesc: string;
     policy: string;
