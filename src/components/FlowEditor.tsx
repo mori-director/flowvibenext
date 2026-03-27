@@ -103,16 +103,26 @@ export default function FlowEditor({
   const [future, setFuture] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
 
   const takeSnapshot = useCallback(() => {
+    const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+    const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+
     setPast((p) => {
       const last = p[p.length - 1];
-      // 방금 전 상태와 완전히 동일하다면 중복 저장 방지
-      if (last && JSON.stringify(last.nodes) === JSON.stringify(nodes) && JSON.stringify(last.edges) === JSON.stringify(edges)) {
+      if (last && JSON.stringify(last.nodes) === JSON.stringify(currentNodes) && JSON.stringify(last.edges) === JSON.stringify(currentEdges)) {
         return p;
       }
-      return [...p.slice(-49), { nodes, edges }];
+      
+      const clonedNodes = currentNodes.map((n: Node) => ({ 
+        ...n, 
+        position: { ...n.position },
+        data: { ...n.data } 
+      }));
+      const clonedEdges = currentEdges.map((e: Edge) => ({ ...e }));
+      
+      return [...p.slice(-49), { nodes: clonedNodes, edges: clonedEdges }];
     });
     setFuture([]);
-  }, [nodes, edges]);
+  }, [reactFlowInstance, nodes, edges]);
 
   const undo = useCallback(() => {
     if (past.length === 0) return;
@@ -393,6 +403,7 @@ export default function FlowEditor({
             onNodesDelete={takeSnapshot}
             onEdgesDelete={takeSnapshot}
             onNodeDragStart={takeSnapshot}
+            onSelectionDragStart={takeSnapshot}
             onConnect={onConnect}
             onReconnect={onReconnect}
             edgesReconnectable={true}
