@@ -1066,21 +1066,23 @@ ${refinePrompt}
                           <p className="text-slate-500 text-sm mt-1">AI가 도출한 업무 플로우와 코드를 검토하세요.</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <button onClick={() => setIsJsonHidden(!isJsonHidden)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${!isJsonHidden ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                            <Code size={14} /> JSON {isJsonHidden ? "보기" : "숨기기"}
-                          </button>
-                          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                            <button onClick={() => setLayoutDirection("TB")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
-                            <button onClick={() => setLayoutDirection("LR")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
-                          </div>
-                          <button onClick={() => setStep(3)} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 text-sm">최종 시각화 <ChevronRight size={18} /></button>
+                          <button onClick={() => setStep(1)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all flex items-center gap-1.5 text-xs shadow-sm"><ArrowLeft size={16} /> 이전</button>
                         </div>
                       </header>
                       <div className="flex gap-4 flex-1 min-h-0 h-full overflow-hidden">
                         <div className={`bg-white rounded-2xl shadow-md border border-slate-200 flex flex-col overflow-hidden h-full transition-all duration-500 ${isJsonHidden ? "flex-1" : "w-1/2"}`}>
                           <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center flex-none">
-                            <h3 className="font-black text-slate-900 text-xs flex items-center gap-2"><FileText size={14} className="text-blue-600" /> 업무 구조화 리포트</h3>
-                            <button onClick={() => setStep(1)} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-400"><ArrowLeft size={14} /></button>
+                            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 pl-2"><FileText size={16} className="text-blue-600" /> 업무 구조화 리포트</h3>
+                            <div className="flex items-center gap-3 pr-1">
+                              <button onClick={() => setIsJsonHidden(!isJsonHidden)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${!isJsonHidden ? "bg-slate-900 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"}`}>
+                                <Code size={14} /> JSON {isJsonHidden ? "보기" : "숨기기"}
+                              </button>
+                              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button onClick={() => setLayoutDirection("TB")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
+                                <button onClick={() => setLayoutDirection("LR")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
+                              </div>
+                              <button onClick={() => setStep(3)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-200 text-xs">최종 시각화 <ChevronRight size={16} /></button>
+                            </div>
                           </div>
                           <div className="flex-1 h-full w-full p-6 text-sm text-slate-600 leading-relaxed font-medium bg-transparent overflow-y-auto custom-scrollbar">
                             {structuredPlan && structuredPlan.length > 0 ? (
