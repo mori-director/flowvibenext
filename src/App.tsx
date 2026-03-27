@@ -237,6 +237,11 @@ export default function App() {
   };
 
   const handleSelectMenu = (id: string | null) => {
+    // 자동 저장: 다른 메뉴로 이동하기 전에 현재 작업 내역을 프로젝트 상태에 저장
+    if (activeMenuId && activeMenuId !== id) {
+      syncCurrentDataToMenu();
+    }
+
     if (!id) {
       setActiveMenuId(null);
       return;
@@ -573,26 +578,55 @@ ${referenceContext}
         };
       });
 
-      setJsonCode(
-        JSON.stringify(
-          {
-            analysis: result.analysis || [],
-            nodes: generatedNodes.map((n: any) => ({
-              id: n.id,
-              type: n.type,
-              label: n.data.label,
-            })),
-            edges: generatedEdges,
-            layoutDirection: "TB",
-          },
-          null,
-          2,
-        ),
+      const newStructuredPlan = (result.analysis || []).filter((a: any) => a && a.content);
+      const newJsonCode = JSON.stringify(
+        {
+          analysis: result.analysis || [],
+          nodes: generatedNodes.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            label: n.data.label,
+          })),
+          edges: generatedEdges,
+          layoutDirection: result.layoutDirection || layoutDirection,
+        },
+        null,
+        2,
       );
 
+      setJsonCode(newJsonCode);
       setFlowNodes(generatedNodes);
       setFlowEdges(generatedEdges);
       setStep(2);
+
+      // 자동 저장: 생성 완료 즉시 프로젝트 전체 상태에 반영하여 타 프로세스 참조 시 즉각 노출되도록 처리
+      setProjects((prev) => prev.map(p => {
+        if (p.id !== selectedProjectId) return p;
+        return {
+          ...p,
+          menus: p.menus.map(m => {
+            if (m.id !== activeMenuId) return m;
+            return {
+              ...m,
+              flowData: {
+                domain: info.domain,
+                customDomain: info.customDomain,
+                channel: info.serviceType,
+                referenceFlowIds: info.referenceFlowIds,
+                flowName: info.flowName,
+                flowDesc: info.flowDesc,
+                policy: info.policy,
+                nodes: generatedNodes,
+                edges: generatedEdges,
+                structuredPlan: newStructuredPlan,
+                jsonCode: newJsonCode,
+                layoutDirection: result.layoutDirection || layoutDirection,
+                step: 2
+              }
+            };
+          })
+        };
+      }));
     } catch (err: any) {
       setError("AI 분석 중 오류가 발생했습니다.");
     } finally {
@@ -683,27 +717,56 @@ ${refinePrompt}
         };
       });
 
-      setJsonCode(
-        JSON.stringify(
-          {
-            analysis: result.analysis || [],
-            nodes: generatedNodes.map((n: any) => ({
-              id: n.id,
-              type: n.type,
-              label: n.data.label,
-            })),
-            edges: generatedEdges,
-            layoutDirection: layoutDirection,
-          },
-          null,
-          2,
-        ),
+      const newStructuredPlan = (result.analysis || []).filter((a: any) => a && a.content);
+      const newJsonCode = JSON.stringify(
+        {
+          analysis: result.analysis || [],
+          nodes: generatedNodes.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            label: n.data.label,
+          })),
+          edges: generatedEdges,
+          layoutDirection: result.layoutDirection || layoutDirection,
+        },
+        null,
+        2,
       );
 
+      setJsonCode(newJsonCode);
       setFlowNodes(generatedNodes);
       setFlowEdges(generatedEdges);
       setRefinePrompt("");
       if (step === 2) setStep(3);
+
+      // 자동 저장: 수정 완료 즉시 프로젝트 상태에 반영
+      setProjects((prev) => prev.map(p => {
+        if (p.id !== selectedProjectId) return p;
+        return {
+          ...p,
+          menus: p.menus.map(m => {
+            if (m.id !== activeMenuId) return m;
+            return {
+              ...m,
+              flowData: {
+                domain: info.domain,
+                customDomain: info.customDomain,
+                channel: info.serviceType,
+                referenceFlowIds: info.referenceFlowIds,
+                flowName: info.flowName,
+                flowDesc: info.flowDesc,
+                policy: info.policy,
+                nodes: generatedNodes,
+                edges: generatedEdges,
+                structuredPlan: newStructuredPlan,
+                jsonCode: newJsonCode,
+                layoutDirection: result.layoutDirection || layoutDirection,
+                step: step === 2 ? 3 : step
+              }
+            };
+          })
+        };
+      }));
     } catch (err: any) {
       setError("AI 수정 중 오류가 발생했습니다.");
     } finally {
