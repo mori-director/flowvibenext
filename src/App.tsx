@@ -902,7 +902,7 @@ ${refinePrompt}
               ) : (
                 <div className="flex-1 flex flex-col overflow-hidden h-full">
                   {step === 1 && (
-                    <div className="h-full max-w-5xl mx-auto flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full overflow-hidden">
+                    <div className="h-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden w-full h-full">
                       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-2xl shadow-sm border border-slate-200 flex-none">
                         <div>
                           <h2 className="text-xl font-black text-slate-900 tracking-tight">{selectedProject?.name} 서비스 프로세스 설계</h2>
