@@ -153,7 +153,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
             <input 
               type="text"
               placeholder="Search..."
-              className="w-full pl-10 pr-4 h-12 rounded-xl bg-white border border-slate-100 text-xs font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
+              className="w-full pl-10 pr-4 h-12 rounded-xl bg-slate-50 border border-slate-100 text-sm font-semibold outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
@@ -397,7 +397,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                     <input 
                       type="text" 
                       autoFocus
-                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-100 transition-all font-bold text-lg placeholder:text-slate-300"
+                      className="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-100 outline-none transition-all font-semibold text-lg focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-slate-300"
                       placeholder="예: 현대카드 UI/UX 고도화"
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -412,10 +412,10 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                           <button 
                             key={d}
                             onClick={() => setFormData({...formData, domain: d})}
-                            className={`px-3 py-2 rounded-xl text-xs font-black transition-all border ${
+                            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
                               formData.domain === d 
-                              ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" 
-                              : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+                              ? "bg-slate-900 text-white shadow-md" 
+                              : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
                             }`}
                           >
                             {d}
@@ -425,7 +425,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                       {formData.domain === "직접입력" && (
                         <input 
                           type="text"
-                          className="w-full mt-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold outline-none focus:bg-white focus:border-blue-500"
+                          className="w-full mt-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-sm outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                           placeholder="산업군 직접 입력"
                           value={formData.customDomain}
                           onChange={(e) => setFormData({...formData, customDomain: e.target.value})}
@@ -439,10 +439,10 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                           <button 
                             key={c}
                             onClick={() => setFormData({...formData, channel: c})}
-                            className={`px-3 py-2 rounded-xl text-xs font-black transition-all border ${
+                            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
                               formData.channel === c 
-                              ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" 
-                              : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+                              ? "bg-slate-900 text-white shadow-md" 
+                              : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
                             }`}
                           >
                             {c}

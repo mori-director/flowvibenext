@@ -74,8 +74,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           return (
             <div key={menu.id} className="space-y-1">
               <div 
-                className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
-                  activeMenuId === menu.id ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" : "hover:bg-slate-800/50"
+                className={`group flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all ${
+                  activeMenuId === menu.id ? "bg-blue-600 text-white shadow-md shadow-blue-900/20 font-bold" : "hover:bg-slate-800/50 text-slate-300 font-medium"
                 }`}
                 onClick={() => onSelectMenu(menu.id)}
               >
@@ -138,8 +138,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {subMenus.map((sub) => (
                   <div 
                     key={sub.id}
-                    className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
-                      activeMenuId === sub.id ? "bg-slate-800 text-blue-400 ring-1 ring-blue-500 shadow-sm" : "hover:bg-slate-800/30 text-slate-400 hover:text-slate-200"
+                    className={`group flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all ${
+                      activeMenuId === sub.id ? "bg-slate-800 text-blue-400 shadow-sm font-bold" : "hover:bg-slate-800/30 text-slate-400 hover:text-slate-200 font-medium"
                     }`}
                     onClick={() => onSelectMenu(sub.id)}
                   >
@@ -199,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <input 
                       autoFocus
                       type="text"
-                      className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[10px] outline-none focus:border-blue-500 text-white"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 font-medium text-white transition-all shadow-inner"
                       placeholder="Add sub-menu..."
                       onKeyDown={(e) => {
                         if (e.nativeEvent.isComposing) return;
@@ -223,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex gap-2">
           <input 
             type="text"
-            className="flex-1 bg-slate-800 border-none rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 text-white placeholder-slate-500"
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs outline-none focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 text-white placeholder-slate-500 transition-all font-medium"
             placeholder="New Menu..."
             value={newMenuName}
             onChange={(e) => setNewMenuName(e.target.value)}
