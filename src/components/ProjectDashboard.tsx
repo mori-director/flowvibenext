@@ -19,7 +19,8 @@ import {
   Smartphone,
   Globe,
   Monitor,
-  Activity
+  Activity,
+  Edit3
 } from "lucide-react";
 import { Project } from "../types";
 
@@ -27,6 +28,7 @@ interface ProjectDashboardProps {
   projects: Project[];
   onSelectProject: (id: string) => void;
   onCreateProject: (name: string, domain: string, customDomain: string, channel: string) => void;
+  onUpdateProject: (id: string, name: string, domain: string, customDomain: string, channel: string) => void;
   onDeleteProject: (id: string) => void;
 }
 
@@ -34,9 +36,11 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
   projects,
   onSelectProject,
   onCreateProject,
+  onUpdateProject,
   onDeleteProject,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     domain: "금융",
@@ -137,6 +141,23 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
     setEndDate("");
     setSortBy("newest");
     setCurrentPage(1);
+  };
+
+  const handleOpenEditModal = (project: Project) => {
+    setEditingProjectId(project.id);
+    setFormData({
+      name: project.name,
+      domain: project.domain,
+      customDomain: project.customDomain,
+      channel: project.channel,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingProjectId(null);
+    setFormData({ name: "", domain: "금융", customDomain: "", channel: "Web" });
+    setIsModalOpen(true);
   };
 
   return (
@@ -275,7 +296,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
         <div className="flex justify-between items-center px-2">
           <h2 className="text-xl font-black text-slate-800 tracking-tight">프로젝트 목록</h2>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="group px-6 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 relative overflow-hidden"
           >
             <Plus size={18} className="group-hover:rotate-90 transition-transform" /> 새 프로젝트 추가
@@ -307,12 +328,20 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                       {project.channel}
                     </span>
                   </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteProject(project.id); }}
-                    className="p-2.5 hover:bg-rose-50 rounded-xl text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenEditModal(project); }}
+                      className="p-2.5 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-blue-600 transition-all"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onDeleteProject(project.id); }}
+                      className="p-2.5 hover:bg-rose-50 rounded-xl text-slate-300 hover:text-rose-500 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors tracking-tight leading-tight">{project.name}</h3>
                 <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold mb-4">
@@ -382,9 +411,9 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
             <div className="p-10 border-b border-slate-50 bg-slate-50/50">
               <h2 className="text-3xl font-black text-slate-900 flex items-center gap-4 tracking-tighter">
                 <div className="bg-blue-600 p-2.5 rounded-2xl text-white shadow-lg shadow-blue-200">
-                  <PlusSquare className="text-white" size={24} />
+                  {editingProjectId ? <Edit3 className="text-white" size={24} /> : <PlusSquare className="text-white" size={24} />}
                 </div> 
-                프로젝트 추가
+                {editingProjectId ? "프로젝트 수정" : "프로젝트 추가"}
               </h2>
               <p className="text-slate-500 text-sm mt-3 font-medium">서비스의 성격에 맞는 메타데이터를 입력하여 기획 설계를 시작하십시오.</p>
             </div>
@@ -464,14 +493,19 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
               <button 
                 onClick={() => {
                   if (formData.name.trim()) {
-                    onCreateProject(formData.name, formData.domain, formData.customDomain, formData.channel);
+                    if (editingProjectId) {
+                      onUpdateProject(editingProjectId, formData.name, formData.domain, formData.customDomain, formData.channel);
+                    } else {
+                      onCreateProject(formData.name, formData.domain, formData.customDomain, formData.channel);
+                    }
                     setIsModalOpen(false);
                     setFormData({ name: "", domain: "금융", customDomain: "", channel: "Web" });
+                    setEditingProjectId(null);
                   }
                 }}
                 className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 text-sm flex items-center justify-center gap-2"
               >
-                <Sparkles size={18} /> 프로젝트 생성
+                <Sparkles size={18} /> {editingProjectId ? "저장하기" : "프로젝트 생성"}
               </button>
             </div>
           </div>

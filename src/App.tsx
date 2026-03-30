@@ -792,6 +792,12 @@ ${refinePrompt}
     setProjects([newProject, ...projects]);
   };
 
+  const handleUpdateProject = (id: string, name: string, domain: string, customDomain: string, channel: string) => {
+    setProjects(prev => prev.map(p => 
+      p.id === id ? { ...p, name, domain, customDomain, channel } : p
+    ));
+  };
+
   const handleDeleteProject = (id: string) => {
     showConfirm("프로젝트를 삭제하시겠습니까? 관련 메뉴 및 프로세스 정보가 모두 삭제됩니다.", () => {
       setProjects(projects.filter(p => p.id !== id));
@@ -941,6 +947,7 @@ ${refinePrompt}
             projects={projects} 
             onSelectProject={(id) => { setSelectedProjectId(id); setStep(1); }}
             onCreateProject={handleCreateProject}
+            onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
           />
         ) : (
