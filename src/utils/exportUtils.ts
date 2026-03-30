@@ -278,18 +278,22 @@ export const exportPPT = async (
   a.style.display = "none";
   a.href = url;
   
-  // 파일명에서 OS 예약어나 특수문자 제거 (안정성 강화)
-  const safeName = flowName.replace(/[/\\?%*:|"<>]/g, "-").replace(/\s/g, "_");
-  a.download = `[FlowCraft]_UX_Plan_${safeName}.pptx`;
+  // 파일명에서 OS 예약어, 특수문자, 대괄호 제거 (최고 수준의 호환성 확보)
+  const safeName = flowName.replace(/[\[\]/\\?%*:|"<>]/g, "").replace(/\s+/g, "_");
+  const fileName = `FlowCraft_UX_Plan_${safeName || "Untitled"}.pptx`;
+  a.download = fileName;
   
   document.body.appendChild(a);
   a.click();
   
-  // 브라우저가 다운로드 프로세스를 시작할 충분한 시간(1초)을 확보한 후 리소스 해제
+  // 브라우저가 대용량 파일을 디스크에 완전히 쓸 수 있도록 리소스 해제 시간을 60초로 대폭 연장
+  // (이전 1초는 일부 환경에서 파일 생성 전 URL이 만료되어 다운로드가 취소되는 원인이 됨)
   setTimeout(() => {
-    document.body.removeChild(a);
+    if (document.body.contains(a)) {
+      document.body.removeChild(a);
+    }
     window.URL.revokeObjectURL(url);
-  }, 1000);
+  }, 60000);
 };
 
 export const exportFigma = async (
@@ -437,16 +441,19 @@ export const exportFigma = async (
   a.style.display = "none";
   a.href = url;
   
-  // 파일명에서 OS 예약어나 특수문자 제거 (안정성 강화)
-  const safeName = flowName.replace(/[/\\?%*:|"<>]/g, "-").replace(/\s/g, "_");
-  a.download = `[FlowCraft]_UX_Plan_${safeName}.svg`;
+  // 파일명에서 OS 예약어, 특수문자, 대괄호 제거 (최고 수준의 호환성 확보)
+  const safeName = flowName.replace(/[\[\]/\\?%*:|"<>]/g, "").replace(/\s+/g, "_");
+  const fileName = `FlowCraft_UX_Plan_${safeName || "Untitled"}.svg`;
+  a.download = fileName;
   
   document.body.appendChild(a);
   a.click();
   
-  // 브라우저가 다운로드 프로세스를 시작할 충분한 시간(1초)을 확보한 후 리소스 해제
+  // 리소스 해제 시간을 60초로 연장하여 안정적 파일 생성 보장
   setTimeout(() => {
-    document.body.removeChild(a);
+    if (document.body.contains(a)) {
+      document.body.removeChild(a);
+    }
     window.URL.revokeObjectURL(url);
-  }, 1000);
+  }, 60000);
 };
