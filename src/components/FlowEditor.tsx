@@ -220,7 +220,7 @@ export default function FlowEditor({
   useEffect(() => {
     if (!initialNodes || initialNodes.length === 0) return;
     
-    const lacksPosition = initialNodes.some(n => !n.position || (n.position.x === 0 && n.position.y === 0));
+    const lacksPosition = initialNodes.some(n => !n.position);
     
     if (lacksPosition) {
        onLayout(initialNodes, initialEdges, layoutDirection);
