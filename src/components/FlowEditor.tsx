@@ -31,6 +31,7 @@ import {
   Link2,
   Undo2,
   Redo2,
+  RefreshCw,
 } from "lucide-react";
 
 let id = 0;
@@ -84,13 +85,18 @@ export default function FlowEditor({
   initialEdges,
   onExportPPT,
   onExportFigma,
+  onNodesChange: onNodesChangeProp,
+  onEdgesChange: onEdgesChangeProp,
   layoutDirection = "TB",
 }: {
   initialNodes: any[];
   initialEdges: any[];
   onExportPPT: () => void;
   onExportFigma: () => void;
+  onNodesChange: (nodes: any[]) => void;
+  onEdgesChange: (edges: any[]) => void;
   layoutDirection?: string;
+  key?: any;
 }) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -204,10 +210,30 @@ export default function FlowEditor({
     }
   }, [reactFlowInstance, setNodes, setEdges]);
 
-  // Initial layout and direction change
+  // Helper to sync latest local state to parent
+  const handleSync = useCallback(() => {
+    onNodesChangeProp(reactFlowInstance ? reactFlowInstance.getNodes() : nodes);
+    onEdgesChangeProp(reactFlowInstance ? reactFlowInstance.getEdges() : edges);
+  }, [reactFlowInstance, nodes, edges, onNodesChangeProp, onEdgesChangeProp]);
+
+  // Initial setup: Layout only if nodes don't have positions (e.g., fresh AI output)
   useEffect(() => {
-    onLayout(initialNodes, initialEdges, layoutDirection);
-  }, [initialNodes, initialEdges, layoutDirection, onLayout]);
+    if (!initialNodes || initialNodes.length === 0) return;
+    
+    const lacksPosition = initialNodes.some(n => !n.position || (n.position.x === 0 && n.position.y === 0));
+    
+    if (lacksPosition) {
+       onLayout(initialNodes, initialEdges, layoutDirection);
+    } else {
+       setNodes(initialNodes.map(n => ({
+         id: n.id,
+         type: n.type,
+         position: n.position || { x: 0, y: 0 },
+         data: n.data || { label: n.label }
+       })));
+       setEdges(initialEdges);
+    }
+  }, [initialNodes, initialEdges, layoutDirection, onLayout, setNodes, setEdges]);
 
 
   // --- A. 엣지 재연결 (드래그 앤 드롭) ---
@@ -215,8 +241,9 @@ export default function FlowEditor({
     (oldEdge: Edge, newConnection: Connection) => {
       takeSnapshot();
       setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
+      setTimeout(handleSync, 0);
     },
-    [setEdges, takeSnapshot],
+    [setEdges, takeSnapshot, handleSync],
   );
 
   // --- B. 연결 생성 (분기 노드면 Y/N 선택 팝업) ---
@@ -241,9 +268,10 @@ export default function FlowEditor({
             eds,
           ),
         );
+        setTimeout(handleSync, 0);
       }
     },
-    [setEdges, nodes, takeSnapshot],
+    [setEdges, nodes, takeSnapshot, handleSync],
   );
 
   // Y/N 선택 후 엣지 생성
@@ -265,8 +293,9 @@ export default function FlowEditor({
         ),
       );
       setPendingConnection(null);
+      setTimeout(handleSync, 0);
     },
-    [pendingConnection, setEdges, takeSnapshot],
+    [pendingConnection, setEdges, takeSnapshot, handleSync],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -297,8 +326,9 @@ export default function FlowEditor({
       };
 
       setNodes((nds) => nds.concat(newNode));
+      setTimeout(handleSync, 0);
     },
-    [reactFlowInstance, setNodes, takeSnapshot],
+    [reactFlowInstance, setNodes, takeSnapshot, handleSync],
   );
 
   return (
@@ -400,10 +430,10 @@ export default function FlowEditor({
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onNodesDelete={takeSnapshot}
-            onEdgesDelete={takeSnapshot}
-            onNodeDragStart={takeSnapshot}
-            onSelectionDragStart={takeSnapshot}
+            onNodesDelete={() => { takeSnapshot(); setTimeout(handleSync, 0); }}
+            onEdgesDelete={() => { takeSnapshot(); setTimeout(handleSync, 0); }}
+            onNodeDragStop={() => { takeSnapshot(); setTimeout(handleSync, 0); }}
+            onSelectionDragStop={() => { takeSnapshot(); setTimeout(handleSync, 0); }}
             onConnect={onConnect}
             onReconnect={onReconnect}
             edgesReconnectable={true}
@@ -420,6 +450,14 @@ export default function FlowEditor({
 
             <Panel position="top-right" className="flex flex-col gap-2">
               <div className="flex bg-white rounded-xl shadow-lg border border-slate-200 p-1 mb-2">
+                <button
+                  onClick={() => onLayout(nodes, edges, layoutDirection)}
+                  className="p-2 rounded-lg transition-all text-slate-600 hover:bg-slate-100 flex items-center justify-center"
+                  title="자동 레이아웃 실행"
+                >
+                  <RefreshCw size={18} />
+                </button>
+                <div className="w-[1px] h-4 bg-slate-100 self-center mx-1" />
                 <button
                   onClick={undo}
                   disabled={past.length === 0}

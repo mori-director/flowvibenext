@@ -1224,7 +1224,16 @@ ${refinePrompt}
                           </div>
                         </div>
                         <div className="flex-1 flex flex-col overflow-hidden relative">
-                          <FlowEditor initialNodes={flowNodes} initialEdges={flowEdges} layoutDirection={layoutDirection} onExportPPT={() => downloadExport("PPT")} onExportFigma={() => downloadExport("Figma")} />
+                          <FlowEditor 
+                            key={activeMenuId}
+                            initialNodes={flowNodes} 
+                            initialEdges={flowEdges} 
+                            onNodesChange={setFlowNodes}
+                            onEdgesChange={setFlowEdges}
+                            layoutDirection={layoutDirection} 
+                            onExportPPT={() => downloadExport("PPT")} 
+                            onExportFigma={() => downloadExport("Figma")} 
+                          />
                         </div>
                       </div>
                     </div>
