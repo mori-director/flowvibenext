@@ -15,6 +15,10 @@ export interface MenuItem {
     policy: string;
     nodes: any[];
     edges: any[];
+    nodesTB?: any[];
+    edgesTB?: any[];
+    nodesLR?: any[];
+    edgesLR?: any[];
     structuredPlan: any[];
     jsonCode: string;
     layoutDirection: string;

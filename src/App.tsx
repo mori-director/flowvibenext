@@ -165,6 +165,8 @@ export default function App() {
 
     if (activeMenu.flowData) {
       const fd = activeMenu.flowData;
+      const currentDir = fd.layoutDirection || "TB";
+      
       setInfo({
         domain: fd.domain || defaultDomain,
         customDomain: fd.customDomain || defaultCustomDomain,
@@ -176,11 +178,22 @@ export default function App() {
         referenceFlowIds: fd.referenceFlowIds || (fd.referenceFlowId ? [fd.referenceFlowId] : []),
         includeExceptions: true,
       });
-      setFlowNodes(fd.nodes);
-      setFlowEdges(fd.edges);
+
+      // Load specific direction data if available
+      if (currentDir === "TB" && fd.nodesTB) {
+        setFlowNodes(fd.nodesTB);
+        setFlowEdges(fd.edgesTB || []);
+      } else if (currentDir === "LR" && fd.nodesLR) {
+        setFlowNodes(fd.nodesLR);
+        setFlowEdges(fd.edgesLR || []);
+      } else {
+        setFlowNodes(fd.nodes);
+        setFlowEdges(fd.edges);
+      }
+
       setJsonCode(fd.jsonCode);
       setStructuredPlan(fd.structuredPlan);
-      setLayoutDirection(fd.layoutDirection);
+      setLayoutDirection(currentDir);
       setStep(fd.step || 1);
     } else {
       // New Menu Item
@@ -202,7 +215,7 @@ export default function App() {
       setLayoutDirection("TB");
       setStep(1);
     }
-  }, [activeMenuId, selectedProjectId, projects]);
+  }, [activeMenuId, selectedProjectId, projects, layoutDirection]);
 
   // Sync back to projects state
   const syncCurrentDataToMenu = () => {
@@ -216,6 +229,7 @@ export default function App() {
           return {
             ...m,
             flowData: {
+              ...m.flowData,
               domain: info.domain,
               customDomain: info.customDomain,
               channel: info.serviceType,
@@ -225,6 +239,10 @@ export default function App() {
               policy: info.policy,
               nodes: flowNodes,
               edges: flowEdges,
+              nodesTB: layoutDirection === "TB" ? flowNodes : m.flowData?.nodesTB,
+              edgesTB: layoutDirection === "TB" ? flowEdges : m.flowData?.edgesTB,
+              nodesLR: layoutDirection === "LR" ? flowNodes : m.flowData?.nodesLR,
+              edgesLR: layoutDirection === "LR" ? flowEdges : m.flowData?.edgesLR,
               structuredPlan,
               jsonCode,
               layoutDirection,
@@ -618,6 +636,10 @@ ${referenceContext}
                 policy: info.policy,
                 nodes: generatedNodes,
                 edges: generatedEdges,
+                nodesTB: undefined,
+                edgesTB: undefined,
+                nodesLR: undefined,
+                edgesLR: undefined,
                 structuredPlan: newStructuredPlan,
                 jsonCode: newJsonCode,
                 layoutDirection: result.layoutDirection || layoutDirection,
@@ -758,6 +780,10 @@ ${refinePrompt}
                 policy: info.policy,
                 nodes: generatedNodes,
                 edges: generatedEdges,
+                nodesTB: undefined,
+                edgesTB: undefined,
+                nodesLR: undefined,
+                edgesLR: undefined,
                 structuredPlan: newStructuredPlan,
                 jsonCode: newJsonCode,
                 layoutDirection: result.layoutDirection || layoutDirection,
@@ -1157,8 +1183,8 @@ ${refinePrompt}
                                 <Code size={14} /> JSON {isJsonHidden ? "보기" : "숨기기"}
                               </button>
                               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                                <button onClick={() => setLayoutDirection("TB")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
-                                <button onClick={() => setLayoutDirection("LR")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
+                                <button onClick={() => { syncCurrentDataToMenu(); setLayoutDirection("TB"); }} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
+                                <button onClick={() => { syncCurrentDataToMenu(); setLayoutDirection("LR"); }} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
                               </div>
                             </div>
                           </div>
@@ -1225,7 +1251,7 @@ ${refinePrompt}
                         </div>
                         <div className="flex-1 flex flex-col overflow-hidden relative">
                           <FlowEditor 
-                            key={activeMenuId}
+                            key={`${activeMenuId}-${layoutDirection}`}
                             initialNodes={flowNodes} 
                             initialEdges={flowEdges} 
                             onNodesChange={setFlowNodes}
