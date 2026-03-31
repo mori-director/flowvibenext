@@ -21,6 +21,8 @@ export interface MenuItem {
     edgesLR?: any[];
     structuredPlan: any[];
     jsonCode: string;
+    jsonCodeTB?: string;
+    jsonCodeLR?: string;
     layoutDirection: string;
     step: number;
   };

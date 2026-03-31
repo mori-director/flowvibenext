@@ -180,18 +180,16 @@ export default function App() {
       });
 
       // Load specific direction data if available
-      if (currentDir === "TB" && fd.nodesTB) {
-        setFlowNodes(fd.nodesTB);
-        setFlowEdges(fd.edgesTB || []);
-      } else if (currentDir === "LR" && fd.nodesLR) {
-        setFlowNodes(fd.nodesLR);
-        setFlowEdges(fd.edgesLR || []);
-      } else {
-        setFlowNodes(fd.nodes);
-        setFlowEdges(fd.edges);
+      if (currentDir === "TB") {
+        setFlowNodes(fd.nodesTB || fd.nodes);
+        setFlowEdges(fd.edgesTB || fd.edges || []);
+        setJsonCode(fd.jsonCodeTB || fd.jsonCode);
+      } else if (currentDir === "LR") {
+        setFlowNodes(fd.nodesLR || fd.nodes);
+        setFlowEdges(fd.edgesLR || fd.edges || []);
+        setJsonCode(fd.jsonCodeLR || fd.jsonCode);
       }
 
-      setJsonCode(fd.jsonCode);
       setStructuredPlan(fd.structuredPlan);
       setLayoutDirection(currentDir);
       setStep(fd.step || 1);
@@ -215,7 +213,7 @@ export default function App() {
       setLayoutDirection("TB");
       setStep(1);
     }
-  }, [activeMenuId, selectedProjectId, projects, layoutDirection]);
+  }, [activeMenuId, selectedProjectId, projects]);
 
   // Sync back to projects state
   const syncCurrentDataToMenu = () => {
@@ -243,6 +241,8 @@ export default function App() {
               edgesTB: layoutDirection === "TB" ? flowEdges : m.flowData?.edgesTB,
               nodesLR: layoutDirection === "LR" ? flowNodes : m.flowData?.nodesLR,
               edgesLR: layoutDirection === "LR" ? flowEdges : m.flowData?.edgesLR,
+              jsonCodeTB: layoutDirection === "TB" ? jsonCode : m.flowData?.jsonCodeTB,
+              jsonCodeLR: layoutDirection === "LR" ? jsonCode : m.flowData?.jsonCodeLR,
               structuredPlan,
               jsonCode,
               layoutDirection,
@@ -250,6 +250,46 @@ export default function App() {
             }
           };
         })
+      };
+    }));
+  };
+
+  const handleLayoutDirectionChange = (newDir: string) => {
+    if (newDir === layoutDirection || !selectedProjectId || !activeMenuId) {
+      setLayoutDirection(newDir);
+      return;
+    }
+    
+    // 1. Sync current state to project state
+    syncCurrentDataToMenu();
+
+    // 2. Switch direction and load new data
+    const project = projects.find(p => p.id === selectedProjectId);
+    const activeMenu = project?.menus.find(m => m.id === activeMenuId);
+    
+    if (activeMenu?.flowData) {
+      const fd = activeMenu.flowData;
+      if (newDir === "TB") {
+        setFlowNodes(fd.nodesTB || fd.nodes);
+        setFlowEdges(fd.edgesTB || fd.edges);
+        setJsonCode(fd.jsonCodeTB || fd.jsonCode);
+      } else {
+        setFlowNodes(fd.nodesLR || fd.nodes);
+        setFlowEdges(fd.edgesLR || fd.edges);
+        setJsonCode(fd.jsonCodeLR || fd.jsonCode);
+      }
+    }
+    
+    setLayoutDirection(newDir);
+
+    // 3. Update project's primary direction
+    setProjects(prev => prev.map(p => {
+      if (p.id !== selectedProjectId) return p;
+      return {
+        ...p,
+        menus: p.menus.map(m => 
+          m.id === activeMenuId ? { ...m, flowData: { ...m.flowData!, layoutDirection: newDir } } : m
+        )
       };
     }));
   };
@@ -640,6 +680,8 @@ ${referenceContext}
                 edgesTB: undefined,
                 nodesLR: undefined,
                 edgesLR: undefined,
+                jsonCodeTB: undefined,
+                jsonCodeLR: undefined,
                 structuredPlan: newStructuredPlan,
                 jsonCode: newJsonCode,
                 layoutDirection: result.layoutDirection || layoutDirection,
@@ -784,6 +826,8 @@ ${refinePrompt}
                 edgesTB: undefined,
                 nodesLR: undefined,
                 edgesLR: undefined,
+                jsonCodeTB: undefined,
+                jsonCodeLR: undefined,
                 structuredPlan: newStructuredPlan,
                 jsonCode: newJsonCode,
                 layoutDirection: result.layoutDirection || layoutDirection,
@@ -1183,8 +1227,8 @@ ${refinePrompt}
                                 <Code size={14} /> JSON {isJsonHidden ? "보기" : "숨기기"}
                               </button>
                               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                                <button onClick={() => { syncCurrentDataToMenu(); setLayoutDirection("TB"); }} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
-                                <button onClick={() => { syncCurrentDataToMenu(); setLayoutDirection("LR"); }} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
+                                <button onClick={() => handleLayoutDirectionChange("TB")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "TB" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>세로</button>
+                                <button onClick={() => handleLayoutDirectionChange("LR")} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${layoutDirection === "LR" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>가로</button>
                               </div>
                             </div>
                           </div>
