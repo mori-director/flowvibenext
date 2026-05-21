@@ -422,7 +422,7 @@ flowDesc에는 프로세스의 전체 서머리와 단계별 순서를, policy�
         apiKey: (import.meta.env.VITE_GEMINI_API_KEY || "").trim(),
       });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview", // 기존: "gemini-3-flash-preview"
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
@@ -445,7 +445,7 @@ flowDesc에는 프로세스의 전체 서머리와 단계별 순서를, policy�
         policy: result.policy || "",
       }));
     } catch (err: any) {
-      setError("AI 자동 생성 중 오류가 발생했습니다.");
+      setError(`AI 자동 생성 중 오류가 발생했습니다: ${err.message || err}`);
     } finally {
       setIsGeneratingDesc(false);
     }
@@ -539,7 +539,7 @@ ${referenceContext}
         apiKey: (import.meta.env.VITE_GEMINI_API_KEY || "").trim(),
       });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview", // 기존: "gemini-3-flash-preview"
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
@@ -692,7 +692,7 @@ ${referenceContext}
         };
       }));
     } catch (err: any) {
-      setError("AI 분석 중 오류가 발생했습니다.");
+      setError(`AI 분석 중 오류가 발생했습니다: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
@@ -741,7 +741,7 @@ ${refinePrompt}
         apiKey: (import.meta.env.VITE_GEMINI_API_KEY || "").trim(),
       });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview", // 기존: "gemini-3-flash-preview"
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
@@ -838,7 +838,7 @@ ${refinePrompt}
         };
       }));
     } catch (err: any) {
-      setError("AI 수정 중 오류가 발생했습니다.");
+      setError(`AI 수정 중 오류가 발생했습니다: ${err.message || err}`);
     } finally {
       setIsRefining(false);
     }
